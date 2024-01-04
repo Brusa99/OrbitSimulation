@@ -23,6 +23,6 @@ G = 6.67408e-11  # m^3 kg^-1 s^-2
 
 # drawing constants
 SCALE = 100 / AU  # pixels per meter
-TIME_SCALE = 3600 * 24  # 1 standard day
+TIME_SCALE = 3600  # 1 standard hour
 RADIUS_SCALE = 6  # scale radius of planets
 def RADIUS_RESIZE(r): return math.log(r/100, 100)

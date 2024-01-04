@@ -11,15 +11,15 @@ class Body:
     Attributes
     ----------
     x, y : float
-        x and y coordinates of the body.
+        x and y coordinates of the body in m.
     mass : float
-        mass of the body.
+        mass of the body in kg.
     radius : float
-        radius of the body.
+        radius of the body in m.
     color : Color
         RGB color of the body (only affects rendering).
     vel_x, vel_y : float
-        x and y components of the velocity of the body.
+        x and y components of the velocity of the body in m/s.
 
     Methods
     -------
@@ -49,11 +49,11 @@ class Body:
         Parameters
         ----------
         x, y : float
-            x and y coordinates of the body.
+            x and y coordinates of the body in m.
         mass : float
-            mass of the body.
+            mass of the body in kg.
         radius : float
-            radius of the body.
+            radius of the body in m.
         color : Color
             RGB color of the body (only affects rendering).
         initial_velocity : tuple[float, float], optional.
@@ -101,9 +101,15 @@ class Body:
         distance = math.sqrt(distance_x ** 2 + distance_y ** 2)
 
         force = G * self.mass * other.mass / distance ** 2
-        theta = math.atan2(distance_y, distance_x)  # angle between the two bodies
-        force_x = force * math.cos(theta)
-        force_y = force * math.sin(theta)
+
+        # decompose force into x and y components
+        force_x = force * distance_x / distance
+        force_y = force * distance_y / distance
+
+        # # alternative method
+        # theta = math.atan2(distance_y, distance_x)  # angle between the two bodies
+        # force_x = force * math.cos(theta)
+        # force_y = force * math.sin(theta)
 
         return force_x, force_y
 
