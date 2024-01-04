@@ -13,6 +13,9 @@ BLUE = Color(70, 100, 240)
 RED = Color(255, 60, 0)
 DARK_RED = Color(150, 0, 0)
 DARK_GRAY = Color(50, 50, 50)
+LIGHT_BROWN = Color(200, 150, 100)
+DARK_YELLOW = Color(200, 150, 0)
+LIGHT_BLUE = Color(0, 150, 255)
 
 # astronomical constants
 AU = 149_597_870_700  # meters
