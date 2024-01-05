@@ -1,8 +1,14 @@
 import math
+import pygame
 from collections import namedtuple
 
-# pygame
+# pygame setup
+pygame.init()
 WIDTH, HEIGHT = 800, 800
+WINDOW = pygame.display.set_mode((WIDTH, HEIGHT))
+CLOCK = pygame.time.Clock()
+FONT = pygame.font.SysFont("comicsans", 25)
+pygame.display.set_caption("Orbit Simulation")
 
 # colors
 Color = namedtuple("Color", ["r", "g", "b"])
@@ -21,8 +27,25 @@ LIGHT_BLUE = Color(0, 150, 255)
 AU = 149_597_870_700  # meters
 G = 6.67408e-11  # m^3 kg^-1 s^-2
 
+# math constants
+TIME_SCALE = 3600 * 24  # 1 standard day
+
 # drawing constants
 SCALE = 100 / AU  # pixels per meter
-TIME_SCALE = 3600  # 1 standard hour
 RADIUS_SCALE = 6  # scale radius of planets
 def RADIUS_RESIZE(r): return math.log(r/100, 100)
+
+
+def main_step(system, tick=0) -> bool:
+    run = True
+    CLOCK.tick(tick)
+    WINDOW.fill(BLACK)
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:  # if user manually quits
+            run = False
+
+    # main simulation loop
+    system.update()
+    system.draw(WINDOW)
+
+    return run
