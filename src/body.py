@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections import deque
 import pygame
-from src.constants import *
+from src.config import *
 
 
 class Body:
