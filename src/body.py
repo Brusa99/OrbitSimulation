@@ -38,7 +38,8 @@ class Body:
                  mass: float,
                  radius: float,
                  color: Color,
-                 initial_velocity=(0, 0)
+                 initial_velocity=(0, 0),
+                 max_orbit_length=1000,
                  ):
         """
         Constructor Method.
@@ -59,6 +60,8 @@ class Body:
         initial_velocity : tuple[float, float], optional.
             initial velocity of the body in m/s, relative to the fixed coordinate system (default is (0, 0), which is
             stationary).
+        max_orbit_length : int, optional
+            maximum length of the orbit path (default is 1000).
         """
         self.x = x
         self.y = y
@@ -68,13 +71,13 @@ class Body:
         self.vel_x = initial_velocity[0]
         self.vel_y = initial_velocity[1]
 
-        self._orbit = deque(maxlen=1000)
+        self._orbit = deque(maxlen=max_orbit_length)
 
-    def draw(self, window):
+    def draw(self, window, scale=SCALE):
         """Draws the planet on the window"""
         radius = RADIUS_RESIZE(self.radius) * RADIUS_SCALE
-        x = self.x * SCALE + WIDTH / 2  # center of window is (WIDTH/2, HEIGHT/2)
-        y = self.y * SCALE + HEIGHT / 2
+        x = self.x * scale + WIDTH / 2  # center of window is (WIDTH/2, HEIGHT/2)
+        y = self.y * scale + HEIGHT / 2
         self._orbit.append((x, y))
 
         # draw
@@ -135,7 +138,7 @@ class Body:
                 force_y += force[1]
         return force_x, force_y
 
-    def update(self, bodies: list[Body]):
+    def update(self, bodies: list[Body], time_delta=TIME_SCALE):
         """
         Updates the position and the velocity of the body.
 
@@ -143,11 +146,51 @@ class Body:
         ----------
         bodies : list[Body]
             list of all bodies in the simulation.
+        time_delta : float, optional
+            time delta to approximate the derivative of the position and the velocity of the bodies (default is
+            TIME_SCALE).
         """
         force = self.total_force(bodies)
         acceleration_x = force[0] / self.mass
         acceleration_y = force[1] / self.mass
-        self.vel_x += acceleration_x * TIME_SCALE
-        self.vel_y += acceleration_y * TIME_SCALE
-        self.x += self.vel_x * TIME_SCALE
-        self.y += self.vel_y * TIME_SCALE
+        self.vel_x += acceleration_x * time_delta
+        self.vel_y += acceleration_y * time_delta
+        self.x += self.vel_x * time_delta
+        self.y += self.vel_y * time_delta
+
+
+class System:
+    """
+    A class to represent a system of celestial bodies.
+
+    Attributes
+    ----------
+    celestial_bodies : list[Body]
+        list of all bodies in the system.
+    time_delta : float
+        time delta to approximate the derivative of the position and the velocity of the bodies.
+    scale : float
+        pixels per meter. (only affects rendering)
+
+    Methods
+    -------
+    draw(window)
+        Draws all the bodies in the system on the window.
+    update()
+        Updates the positions and the velocities of all the bodies in the system.
+    """
+    def __init__(self, celestial_bodies: list[Body], time_delta=TIME_SCALE, scale=SCALE):
+        """Constructor Method."""
+        self.celestial_bodies = celestial_bodies
+        self.time_delta = time_delta
+        self.scale = scale
+
+    def draw(self, window):
+        """Draws all the bodies in the system on the window."""
+        for body in self.celestial_bodies:
+            body.draw(window, self.scale)
+
+    def update(self):
+        """Updates the positions and the velocities of all the bodies in the system."""
+        for body in self.celestial_bodies:
+            body.update(self.celestial_bodies, self.time_delta)
