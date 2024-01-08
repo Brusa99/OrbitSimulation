@@ -171,6 +171,8 @@ class System:
         time delta to approximate the derivative of the position and the velocity of the bodies.
     scale : float
         pixels per meter. (only affects rendering)
+    focus_scale : float
+        pixels per meter when the system is focused on a body. (only affects rendering)
 
     Methods
     -------
@@ -179,11 +181,15 @@ class System:
     update()
         Updates the positions and the velocities of all the bodies in the system.
     """
-    def __init__(self, celestial_bodies: list[Body], time_delta=TIME_SCALE, scale=SCALE):
+    def __init__(self, celestial_bodies: list[Body], time_delta=TIME_SCALE, scale=SCALE, focus_scale=None):
         """Constructor Method."""
         self.celestial_bodies = celestial_bodies
         self.time_delta = time_delta
         self.scale = scale
+        if focus_scale is None:
+            self.focus_scale = scale
+        else:
+            self.focus_scale = focus_scale
 
     def draw(self, window):
         """Draws all the bodies in the system on the window."""
@@ -194,3 +200,12 @@ class System:
         """Updates the positions and the velocities of all the bodies in the system."""
         for body in self.celestial_bodies:
             body.update(self.celestial_bodies, self.time_delta)
+
+    def draw_focused(self, window, focus: Body):
+        """Draws all the bodies in the system on the window, centerd around the focus"""
+        for body in self.celestial_bodies:
+            radius = RADIUS_RESIZE(body.radius) * RADIUS_SCALE
+            x = (body.x - focus.x) * self.focus_scale + WIDTH / 2
+            y = (body.y - focus.y) * self.focus_scale + HEIGHT / 2
+
+            pygame.draw.circle(window, body.color, (x, y), radius)

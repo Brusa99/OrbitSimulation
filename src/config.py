@@ -19,9 +19,11 @@ BLUE = Color(70, 100, 240)
 RED = Color(255, 60, 0)
 DARK_RED = Color(150, 0, 0)
 DARK_GRAY = Color(50, 50, 50)
+LIGHT_GRAY = Color(150, 150, 150)
 LIGHT_BROWN = Color(200, 150, 100)
 DARK_YELLOW = Color(200, 150, 0)
 LIGHT_BLUE = Color(0, 150, 255)
+PINK = Color(238, 114, 114)
 
 # astronomical constants
 AU = 149_597_870_700  # meters
@@ -32,8 +34,8 @@ TIME_SCALE = 3600 * 24  # 1 standard day
 
 # drawing constants
 SCALE = 100 / AU  # pixels per meter
-RADIUS_SCALE = 6  # scale radius of planets
-def RADIUS_RESIZE(r): return math.log(r/100, 100)
+RADIUS_SCALE = 2  # scale radius of planets
+def RADIUS_RESIZE(r): return math.log(r, 10)
 
 
 def main_step(system, tick=0) -> bool:
