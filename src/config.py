@@ -15,6 +15,7 @@ Color = namedtuple("Color", ["r", "g", "b"])
 WHITE = Color(255, 255, 255)
 BLACK = Color(0, 0, 0)
 YELLOW = Color(255, 255, 0)
+GREEN = Color(0, 255, 0)
 BLUE = Color(70, 100, 240)
 RED = Color(255, 60, 0)
 DARK_RED = Color(150, 0, 0)
@@ -34,8 +35,8 @@ TIME_SCALE = 3600 * 24  # 1 standard day
 
 # drawing constants
 SCALE = 100 / AU  # pixels per meter
-RADIUS_SCALE = 2  # scale radius of planets
-def RADIUS_RESIZE(r): return math.log(r, 10)
+RADIUS_SCALE = 1  # scale radius of planets
+def RADIUS_RESIZE(r): return math.log(r, 2)
 
 
 def main_step(system, tick=0) -> bool:
