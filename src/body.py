@@ -187,15 +187,22 @@ class Satellite(Body):
     transmission_factor = 0.005
     connection_factor = 0.005
 
-    def __init__(self, *args, motherbase: Body | None = None, sun: Body | None = None, **kwargs):
+    def __init__(self,
+                 *args,
+                 motherbase: Body | None = None,
+                 sun: Body | None = None,
+                 orbit_target: Body | None = None,
+                 **kwargs):
         """
         Constructor Method.
         """
         super().__init__(*args, **kwargs)
         self.motherbase = motherbase
         self.sun = sun
+        self.orbit_target = orbit_target
+        self.altitude = 0
         self.battery = 100
-        self.connected = True
+        self.connections = 0
         self.attempted_connections = 0
         self.relay = None
         self.transmitting = False
@@ -282,17 +289,23 @@ class Satellite(Body):
             TIME_SCALE).
         """
         charging = not self.calculate_path(self.sun, obstacles)
-        battery_prime = self.solar_charge_factor * charging\
-                        - self.transmitting * self.transmission_factor \
+        battery_prime = self.solar_charge_factor * charging \
+                        - self.transmitting * self.transmission_factor * self.connections \
                         - self.battery_discharge_factor \
                         - self.attempted_connections * self.connection_factor
 
         new_battery = np.clip(self.battery + battery_prime * time_delta, 0, 100)
         self.battery = new_battery
 
+    def _altitude_update(self):
+        """Updates the altitude of the satellite."""
+        distance = math.sqrt((self.x - self.orbit_target.x) ** 2 + (self.y - self.orbit_target.y) ** 2)
+        self.altitude = distance - self.orbit_target.radius
+
     def update(self, bodies: list[Body], time_delta=TIME_SCALE):
         super().update(bodies, time_delta)
         self._battery_update(bodies, time_delta)
+        self._altitude_update()
 
 
 class System:
@@ -371,21 +384,22 @@ class System:
         """Check if the satellites can connect to motherbase directly or through a relay."""
         # try to connect to motherbase
         for sat in self.satellites:
-            sat.connected = False
+            sat.connections = 0
             sat.attempted_connections = 1
             obstructed = sat.calculate_path(sat.motherbase, self.celestial_bodies)
             if not obstructed:
-                sat.connected = True
+                sat.connections += 1
                 sat.relay = sat.motherbase
 
         # obstructed satellite try to relay through connected ones
-        connected_sats = [sat for sat in self.satellites if sat.connected]
+        connected_sats = [sat for sat in self.satellites if sat.connections]
         unconnected_sats = [sat for sat in self.satellites if sat not in connected_sats]
         for sat in unconnected_sats:
             for relay in connected_sats:
                 sat.attempted_connections += 1
                 obstructed = sat.calculate_path(relay, self.celestial_bodies)
                 if not obstructed:
-                    sat.connected = True
+                    sat.connections += 1
                     sat.relay = relay
+                    relay.connections += 1
                     break
