@@ -1,6 +1,5 @@
 from __future__ import annotations
 from collections import deque
-import pygame
 import numpy as np
 from src.config import *
 
@@ -173,7 +172,7 @@ class Body:
         self.y += self.vel_y * time_delta
 
     def __repr__(self):
-        return f"{self.__class__.__name__} {self.name} (x={self.x}, y={self.y})"
+        return f"{self.__class__.__name__} {self.name}"
 
 
 class Satellite(Body):
@@ -181,9 +180,12 @@ class Satellite(Body):
     Body subclass for satellites.
     """
     interference_factor = 1
-    solar_charge_factor = 0.01
+
+    # battery factors
+    solar_charge_factor = 0.02
     battery_discharge_factor = 0.001
-    transmission_factor = 0.05
+    transmission_factor = 0.005
+    connection_factor = 0.005
 
     def __init__(self, *args, motherbase: Body | None = None, sun: Body | None = None, **kwargs):
         """
@@ -194,6 +196,8 @@ class Satellite(Body):
         self.sun = sun
         self.battery = 100
         self.connected = True
+        self.attempted_connections = 0
+        self.relay = None
         self.transmitting = False
 
     def calculate_path(self, target: Body, obstacles: list[Body]):
@@ -238,8 +242,10 @@ class Satellite(Body):
                 return True
         return False
 
-    def draw_connection(self, window, target: Body, obstacles: list[Body], scale=SCALE):
+    def draw_connection(self, window, target: Body | None, obstacles: list[Body], scale=SCALE):
         """Draws a colored line between this satellite and the target."""
+        if target is None:
+            target = self.motherbase
         obstructed = self.calculate_path(target, obstacles)
         color = RED if obstructed else GREEN
         x1 = self.x * scale + WIDTH / 2
@@ -248,8 +254,10 @@ class Satellite(Body):
         y2 = target.y * scale + HEIGHT / 2
         pygame.draw.line(window, color, (x1, y1), (x2, y2), 1)
 
-    def draw_connection_focused(self, window, target: Body, obstacles: list[Body], focus: Body, scale=SCALE):
+    def draw_connection_focused(self, window, target: Body | None, obstacles: list[Body], focus: Body, scale=SCALE):
         """Draws a colored line between this satellite and the target, centered around the focus."""
+        if target is None:
+            target = self.motherbase
         obstructed = self.calculate_path(target, obstacles)
         color = RED if obstructed else GREEN
         x1 = (self.x - focus.x) * scale + WIDTH / 2
@@ -273,9 +281,12 @@ class Satellite(Body):
             time delta to approximate the derivative of the position and the velocity of the bodies (default is
             TIME_SCALE).
         """
-        battery_prime = - self.transmitting * self.transmission_factor \
+        charging = not self.calculate_path(self.sun, obstacles)
+        battery_prime = self.solar_charge_factor * charging\
+                        - self.transmitting * self.transmission_factor \
                         - self.battery_discharge_factor \
-                        + self.solar_charge_factor * self.calculate_path(self.sun, obstacles)
+                        - self.attempted_connections * self.connection_factor
+
         new_battery = np.clip(self.battery + battery_prime * time_delta, 0, 100)
         self.battery = new_battery
 
@@ -354,4 +365,27 @@ class System:
             body.draw_focused(window, focus, self.focus_scale)
         for sat in self.satellites:
             sat.draw_focused(window, focus, self.focus_scale)
-            sat.draw_connection_focused(window, sat.motherbase, self.celestial_bodies, focus, self.focus_scale)
+            sat.draw_connection_focused(window, sat.relay, self.celestial_bodies, focus, self.focus_scale)
+
+    def satellite_connection(self):
+        """Check if the satellites can connect to motherbase directly or through a relay."""
+        # try to connect to motherbase
+        for sat in self.satellites:
+            sat.connected = False
+            sat.attempted_connections = 1
+            obstructed = sat.calculate_path(sat.motherbase, self.celestial_bodies)
+            if not obstructed:
+                sat.connected = True
+                sat.relay = sat.motherbase
+
+        # obstructed satellite try to relay through connected ones
+        connected_sats = [sat for sat in self.satellites if sat.connected]
+        unconnected_sats = [sat for sat in self.satellites if sat not in connected_sats]
+        for sat in unconnected_sats:
+            for relay in connected_sats:
+                sat.attempted_connections += 1
+                obstructed = sat.calculate_path(relay, self.celestial_bodies)
+                if not obstructed:
+                    sat.connected = True
+                    sat.relay = relay
+                    break
