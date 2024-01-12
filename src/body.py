@@ -185,12 +185,13 @@ class Satellite(Body):
     battery_discharge_factor = 0.001
     transmission_factor = 0.05
 
-    def __init__(self, motherbase: Body, *args, **kwargs):
+    def __init__(self, *args, motherbase: Body | None = None, sun: Body | None = None, **kwargs):
         """
         Constructor Method.
         """
         super().__init__(*args, **kwargs)
         self.motherbase = motherbase
+        self.sun = sun
         self.battery = 100
         self.connected = True
         self.transmitting = False
@@ -257,7 +258,7 @@ class Satellite(Body):
         y2 = (target.y - focus.y) * scale + HEIGHT / 2
         pygame.draw.line(window, color, (x1, y1), (x2, y2), 1)
 
-    def _battery_update(self, sun: Body, obstacles: list[Body], time_delta=TIME_SCALE):
+    def _battery_update(self, obstacles: list[Body], time_delta=TIME_SCALE):
         """
         Updates the battery of the satellite.
 
@@ -266,8 +267,6 @@ class Satellite(Body):
 
         Parameters
         ----------
-        sun : Body
-            the sun. If the satellite can connect to the sun, it charges.
         obstacles : list[Body]
             list of all bodies that can cause obstuctions to the satellite-sun path.
         time_delta : float, optional
@@ -276,13 +275,13 @@ class Satellite(Body):
         """
         battery_prime = - self.transmitting * self.transmission_factor \
                         - self.battery_discharge_factor \
-                        + self.solar_charge_factor * self.calculate_path(sun, obstacles)
+                        + self.solar_charge_factor * self.calculate_path(self.sun, obstacles)
         new_battery = np.clip(self.battery + battery_prime * time_delta, 0, 100)
         self.battery = new_battery
 
-    def update(self, sun: Body, bodies: list[Body], time_delta=TIME_SCALE):
+    def update(self, bodies: list[Body], time_delta=TIME_SCALE):
         super().update(bodies, time_delta)
-        self._battery_update(sun, bodies, time_delta)
+        self._battery_update(bodies, time_delta)
 
 
 class System:
@@ -312,14 +311,22 @@ class System:
                  celestial_bodies: list[Body],
                  satellites: list[Satellite] | None = None,
                  sun: Body | None = None,
+                 sat_motherbase: Body | None = None,
                  time_delta=TIME_SCALE,
                  scale=SCALE,
                  focus_scale=None,
                  ):
         """Constructor Method."""
         self.celestial_bodies = celestial_bodies
-        self.satellites = satellites
+        self.satellites = satellites if satellites is not None else []
+
+        # set default sun and motherbase for all satellites
         self.sun = sun if sun is not None else celestial_bodies[0]
+        self.sat_motherbase = sat_motherbase if sat_motherbase is not None else celestial_bodies[1]
+        for sat in self.satellites:
+            sat.sun = self.sun
+            sat.motherbase = self.sat_motherbase
+
         self.time_delta = time_delta
         self.scale = scale
         if focus_scale is None:
@@ -339,7 +346,7 @@ class System:
         for body in self.celestial_bodies:
             body.update(self.celestial_bodies, self.time_delta)
         for satellite in self.satellites:
-            satellite.update(self.sun, self.celestial_bodies, self.time_delta)
+            satellite.update(self.celestial_bodies, self.time_delta)
 
     def draw_focused(self, window, focus: Body):
         """Draws all the bodies in the system on the window, centerd around the focus"""

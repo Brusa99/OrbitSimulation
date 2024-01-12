@@ -8,6 +8,7 @@ def main():
     run = True
     focus_scale = 1_500_000 / AU
     time_delta = 60  # 1 standard minute
+    bg = pygame.image.load("../src/bg1.jpg")
 
     # setup bodies
     sun = Body(0, 0, radius=696.240e6, color=YELLOW, mass=1.989e30, name="Sun")
@@ -33,11 +34,11 @@ def main():
     orbital_speed = lambda d: math.sqrt(G * mars.mass / (mars.radius + d))
 
     # https://en.wikipedia.org/wiki/2001_Mars_Odyssey
-    sat1 = Satellite(earth, mars.x - mars.radius - 400e3, 0, name="Mars Odyssey",
+    sat1 = Satellite(mars.x - mars.radius - 400e3, 0, name="Mars Odyssey",
                      radius=20, color=LIGHT_GRAY, mass=725, initial_velocity=(0, 24.077e3 + orbital_speed(400e3)))
 
     # https://en.wikipedia.org/wiki/Mars_Reconnaissance_Orbiter
-    sat2 = Satellite(earth, mars.x + mars.radius + 300e3, 0, name="Mars Reconnaissance Orbiter",
+    sat2 = Satellite(mars.x + mars.radius + 300e3, 0, name="Mars Reconnaissance Orbiter",
                      radius=20, color=DARK_GRAY, mass=1125, initial_velocity=(0, 24.077e3 - orbital_speed(300e3)))
 
     celestial_bodies = [sun, moon, earth, mars, mercury, venus, jupiter, phobos, deimos]
@@ -48,6 +49,7 @@ def main():
         run = main_step(solar_system, tick=60)
 
         WINDOW.fill(BLACK)
+        WINDOW.blit(bg, (0, 0))
         solar_system.draw_focused(WINDOW, focus=mars)
 
         text1 = f"{sat1.name} battery = {round(sat1.battery, 1)}%"
