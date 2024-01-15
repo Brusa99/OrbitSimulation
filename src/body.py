@@ -180,6 +180,7 @@ class Satellite(Body):
     Body subclass for satellites.
     """
     interference_factor = 1
+    boost_force = 0.1  # N
 
     # battery factors
     solar_charge_factor = 0.02
@@ -192,6 +193,8 @@ class Satellite(Body):
                  motherbase: Body | None = None,
                  sun: Body | None = None,
                  orbit_target: Body | None = None,
+                 min_altitude=0,
+                 max_altitude=math.inf,
                  **kwargs):
         """
         Constructor Method.
@@ -200,7 +203,11 @@ class Satellite(Body):
         self.motherbase = motherbase
         self.sun = sun
         self.orbit_target = orbit_target
+        self.min_altitude = min_altitude
+        self.max_altitude = max_altitude
         self.altitude = 0
+        self.periapasis = math.inf
+        self.apoapsis = 0
         self.battery = 100
         self.connections = 0
         self.attempted_connections = 0
@@ -298,14 +305,63 @@ class Satellite(Body):
         self.battery = new_battery
 
     def _altitude_update(self):
-        """Updates the altitude of the satellite."""
+        """Updates altitude, periapsis and apoapsis of the satellite."""
         distance = math.sqrt((self.x - self.orbit_target.x) ** 2 + (self.y - self.orbit_target.y) ** 2)
         self.altitude = distance - self.orbit_target.radius
+
+        # update periapsis and apoapsis
+        self._at_periapasis = False
+        self._at_apoapsis = False
+        if self.altitude < self.periapasis:
+            self.periapasis = self.altitude
+            self._at_periapasis = True
+        if self.altitude > self.apoapsis:
+            self.apoapsis = self.altitude
+            self._at_apoapsis = True
+
+        print(f"\n[{self.name}]")
+        print(f"altitude = {self.altitude/1000}km")
+        print(f"periapasis = {round(self.periapasis/1000, 1)}km, min altitude = {round(self.min_altitude/1000, 1)}km")
+        print(f"apoapsis = {round(self.apoapsis/1000, 1)}km", f"max altitude = {round(self.max_altitude/1000, 1)}km")
+
+    def _adjust_orbit(self, time_delta=TIME_SCALE):
+        """If the satellite has its periapsis too low, or apoapsis too high, burns the booster."""
+        if self.apoapsis > self.max_altitude and self._at_periapasis:
+            # decelerate at periapsis to lower apoapsis
+            velocity_angle = math.atan2(self.vel_y, self.vel_x)
+            acceleration = - self.boost_force / self.mass
+            self.vel_x += acceleration * math.cos(velocity_angle) * time_delta
+            self.vel_y += acceleration * math.sin(velocity_angle) * time_delta
+            print(f"\n###################################################")
+            print(f"[{self.name}]DECELERATING")
+            print(f"altitude = {self.altitude/1000}km")
+            print(f"max altitude = {self.max_altitude/1000}km")
+            print(f"apoapsis = {self.apoapsis/1000}km")
+            print(f"at periapasis = {self._at_periapasis}")
+            print(f"velocity = ({self.vel_x}, {self.vel_y})")
+            print(f"acceleration = ({acceleration * math.cos(velocity_angle)}, {acceleration * math.sin(velocity_angle)})")
+            print(f"###################################################")
+        if self.periapasis < self.min_altitude and self._at_apoapsis:
+            # accelerate at apoapsis to raise periapsis
+            velocity_angle = math.atan2(self.vel_y, self.vel_x)
+            acceleration = self.boost_force / self.mass
+            self.vel_x += acceleration * math.cos(velocity_angle) * time_delta
+            self.vel_y += acceleration * math.sin(velocity_angle) * time_delta
+            print(f"###################################################")
+            print(f"[{self.name}]ACCELERATING")
+            print(f"altitude = {self.altitude/1000}km")
+            print(f"min altitude = {self.min_altitude/1000}km")
+            print(f"periapasis = {self.periapasis/1000}km")
+            print(f"at apoapsis = {self._at_apoapsis}")
+            print(f"velocity = ({self.vel_x}, {self.vel_y})")
+            print(f"acceleration = ({acceleration * math.cos(velocity_angle)}, {acceleration * math.sin(velocity_angle)})")
+            print(f"###################################################")
 
     def update(self, bodies: list[Body], time_delta=TIME_SCALE):
         super().update(bodies, time_delta)
         self._battery_update(bodies, time_delta)
         self._altitude_update()
+        self._adjust_orbit()
 
 
 class System:

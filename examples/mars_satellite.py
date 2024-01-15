@@ -34,15 +34,18 @@ def main():
     orbital_speed = lambda d: math.sqrt(G * mars.mass / (mars.radius + d))
 
     # https://en.wikipedia.org/wiki/2001_Mars_Odyssey
-    sat1 = Satellite(mars.x - mars.radius - 400e3, 0, name="Odyssey",
-                     radius=20, color=LIGHT_GRAY, mass=725, initial_velocity=(0, 24.077e3 + orbital_speed(400e3)))
+    sat1 = Satellite(mars.x - mars.radius - 400e3, 0, name="Odyssey", orbit_target=mars,
+                     radius=20, color=LIGHT_GRAY, mass=725, initial_velocity=(0, 24.077e3 + orbital_speed(400e3)),
+                     min_altitude=100e3, max_altitude=1000e3)
 
     # https://en.wikipedia.org/wiki/Mars_Reconnaissance_Orbiter
-    sat2 = Satellite(mars.x + mars.radius + 300e3, 0, name="Rec Orbiter",
-                     radius=20, color=DARK_GRAY, mass=1125, initial_velocity=(0, 24.077e3 - orbital_speed(300e3)))
+    sat2 = Satellite(mars.x + mars.radius + 300e3, 0, name="Rec Orbiter", orbit_target=mars,
+                     radius=20, color=DARK_GRAY, mass=1125, initial_velocity=(0, 24.077e3 - orbital_speed(300e3)),
+                     min_altitude=100e3, max_altitude=1200e3)
 
-    sat3 = Satellite(mars.x + mars.radius + 5000e3, 0, name="Relay",
-                     radius=10, color=WHITE, mass=420, initial_velocity=(0, 24.077e3 - orbital_speed(5000e3)))
+    sat3 = Satellite(mars.x + mars.radius + 5000e3, 0, name="Relay", orbit_target=mars,
+                     radius=10, color=WHITE, mass=420, initial_velocity=(0, 24.077e3 - orbital_speed(5000e3)),
+                     min_altitude=3000e3, max_altitude=7000e3)
     celestial_bodies = [sun, earth, moon, mars, mercury, venus, jupiter, phobos, deimos]
     satellites = [sat1, sat2, sat3]
     solar_system = System(celestial_bodies, satellites, time_delta=time_delta, focus_scale=focus_scale)
@@ -56,9 +59,9 @@ def main():
         solar_system.satellite_connection()
         solar_system.draw_focused(WINDOW, focus=mars)
 
-        text1 = f"{sat1.name} battery = {round(sat1.battery, 1)}%"
-        text2 = f"{sat2.name} battery = {round(sat2.battery, 1)}%"
-        text3 = f"{sat3.name} battery = {round(sat3.battery, 1)}%"
+        text1 = f"[{sat1.name}] battery = {round(sat1.battery, 1)}%, altitude = {round(sat1.altitude/1000, 1)}km"
+        text2 = f"[{sat2.name}] battery = {round(sat2.battery, 1)}%, altitude = {round(sat2.altitude/1000, 1)}km"
+        text3 = f"[{sat3.name}] battery = {round(sat3.battery, 1)}%, altitude = {round(sat3.altitude/1000, 1)}km"
         # text1 = f"{sat1.name} relay = {sat1.relay}"
         # text2 = f"{sat2.name} relay = {sat2.relay}"
         d1 = FONT.render(text1, True, WHITE)
