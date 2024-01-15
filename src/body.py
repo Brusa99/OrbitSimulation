@@ -180,7 +180,8 @@ class Satellite(Body):
     Body subclass for satellites.
     """
     interference_factor = 1
-    boost_force = 0.1  # N
+    apsis_counter_threshold = 1000  # number of time steps to wait before resetting the apoapsis and periapsis
+    apsis_boost_time = 600  # seconds
 
     # battery factors
     solar_charge_factor = 0.02
@@ -200,14 +201,23 @@ class Satellite(Body):
         Constructor Method.
         """
         super().__init__(*args, **kwargs)
+
         self.motherbase = motherbase
         self.sun = sun
         self.orbit_target = orbit_target
         self.min_altitude = min_altitude
         self.max_altitude = max_altitude
+
+        self._boost_force = self.mass / 10  # N
         self.altitude = 0
-        self.periapasis = math.inf
-        self.apoapsis = 0
+        self._boosting_periapsis = False
+        self._boosting_apoapsis = False
+        self._periapasis_update_counter = 0
+        self._apoapsis_update_counter = 0
+        self._periapsis_booster_steps = 0
+        self._apoapsis_booster_steps = 0
+        self._periapasis = math.inf
+        self._apoapsis = 0
         self.battery = 100
         self.connections = 0
         self.attempted_connections = 0
@@ -306,62 +316,94 @@ class Satellite(Body):
 
     def _altitude_update(self):
         """Updates altitude, periapsis and apoapsis of the satellite."""
+        # update altitude
         distance = math.sqrt((self.x - self.orbit_target.x) ** 2 + (self.y - self.orbit_target.y) ** 2)
         self.altitude = distance - self.orbit_target.radius
 
         # update periapsis and apoapsis
-        self._at_periapasis = False
-        self._at_apoapsis = False
-        if self.altitude < self.periapasis:
-            self.periapasis = self.altitude
+        if self.altitude < self._periapasis:
+            self._periapasis = self.altitude
             self._at_periapasis = True
-        if self.altitude > self.apoapsis:
-            self.apoapsis = self.altitude
+        else:
+            self._at_periapasis = False
+            self._periapasis_update_counter += 1
+        if self.altitude > self._apoapsis:
+            self._apoapsis = self.altitude
             self._at_apoapsis = True
+        else:
+            self._at_apoapsis = False
+            self._apoapsis_update_counter += 1
 
-        print(f"\n[{self.name}]")
-        print(f"altitude = {self.altitude/1000}km")
-        print(f"periapasis = {round(self.periapasis/1000, 1)}km, min altitude = {round(self.min_altitude/1000, 1)}km")
-        print(f"apoapsis = {round(self.apoapsis/1000, 1)}km", f"max altitude = {round(self.max_altitude/1000, 1)}km")
+        # reset periapsis and apoapsis
+        if self._periapasis_update_counter > self.apsis_counter_threshold:
+            self._periapasis = math.inf
+            self._periapasis_update_counter = 0
+        if self._apoapsis_update_counter > self.apsis_counter_threshold:
+            self._apoapsis = 0
+            self._apoapsis_update_counter = 0
 
     def _adjust_orbit(self, time_delta=TIME_SCALE):
-        """If the satellite has its periapsis too low, or apoapsis too high, burns the booster."""
-        if self.apoapsis > self.max_altitude and self._at_periapasis:
-            # decelerate at periapsis to lower apoapsis
+        """
+        If the satellite has its periapsis too low, or apoapsis too high, burns the booster.
+
+        If the peripasis (apoapsis) is below the minimum (maximum) required altitude, he satellites activates its
+         enginesto raise (lower) the periapsis (apoapsis) to the minimum (maximum) required altitude.
+        To correctly raise the periapsis (apoapsis), the satellite burns the booster only when it is at the apoaosis
+         (periapsis). Note that, since ethe orbit is eliptical and is being continuously modified by gravitational
+         forces, the satellite will find itself at apoapsis (periapsis) multiple, consecutive, time steps.
+        After the boost period, if no action is taken, due to satisfying the orbiting requirements or due to not being
+         at the apoapsis (periapsis), the periapsis (apoapsis) is reset.
+        """
+
+        # decelerate at periapsis to lower apoapsis
+        if self._apoapsis > self.max_altitude and self._at_periapasis and self._apoapsis_booster_steps == 0:
+            self._apoapsis_booster_steps += round(self.apsis_boost_time / time_delta)
+            print(f"\n[{self.name}] boosting apoapsis")
+            print(f"boost time = {self.apsis_boost_time}")
+            print(f"time delta = {time_delta}")
+            print(f"steps = {self._apoapsis_booster_steps}")
+            self._boosting_apoapsis = True
+
+        # burn steps
+        if self._apoapsis_booster_steps > 0:
             velocity_angle = math.atan2(self.vel_y, self.vel_x)
-            acceleration = - self.boost_force / self.mass
+            acceleration = - self._boost_force / self.mass
             self.vel_x += acceleration * math.cos(velocity_angle) * time_delta
             self.vel_y += acceleration * math.sin(velocity_angle) * time_delta
-            print(f"\n###################################################")
-            print(f"[{self.name}]DECELERATING")
-            print(f"altitude = {self.altitude/1000}km")
-            print(f"max altitude = {self.max_altitude/1000}km")
-            print(f"apoapsis = {self.apoapsis/1000}km")
-            print(f"at periapasis = {self._at_periapasis}")
-            print(f"velocity = ({self.vel_x}, {self.vel_y})")
-            print(f"acceleration = ({acceleration * math.cos(velocity_angle)}, {acceleration * math.sin(velocity_angle)})")
-            print(f"###################################################")
-        if self.periapasis < self.min_altitude and self._at_apoapsis:
-            # accelerate at apoapsis to raise periapsis
+            self._apoapsis_booster_steps -= 1
+
+        # reset apoapsis at burn end
+        if self._apoapsis_booster_steps == 0 and self._boosting_apoapsis:
+            self._apoapsis = 0
+            self._boosting_apoapsis = False
+
+        # accelerate at apoapsis to raise periapsis
+        if self._periapasis < self.min_altitude and self._at_apoapsis and self._periapsis_booster_steps == 0:
+            self._periapsis_booster_steps += round(self.apsis_boost_time / time_delta)
+            print(f"\n[{self.name}] boosting periapsis")
+            print(f"boost time = {self.apsis_boost_time}")
+            print(f"time delta = {time_delta}")
+            print(f"steps = {self._periapsis_booster_steps}")
+            self._boosting_periapsis = True
+
+        # burn steps
+        if self._periapsis_booster_steps > 0:
             velocity_angle = math.atan2(self.vel_y, self.vel_x)
-            acceleration = self.boost_force / self.mass
+            acceleration = - self._boost_force / self.mass
             self.vel_x += acceleration * math.cos(velocity_angle) * time_delta
             self.vel_y += acceleration * math.sin(velocity_angle) * time_delta
-            print(f"###################################################")
-            print(f"[{self.name}]ACCELERATING")
-            print(f"altitude = {self.altitude/1000}km")
-            print(f"min altitude = {self.min_altitude/1000}km")
-            print(f"periapasis = {self.periapasis/1000}km")
-            print(f"at apoapsis = {self._at_apoapsis}")
-            print(f"velocity = ({self.vel_x}, {self.vel_y})")
-            print(f"acceleration = ({acceleration * math.cos(velocity_angle)}, {acceleration * math.sin(velocity_angle)})")
-            print(f"###################################################")
+            self._periapsis_booster_steps -= 1
+
+        # reset periapsis at burn end
+        if self._periapsis_booster_steps == 0 and self._boosting_periapsis:
+            self._periapasis = math.inf
+            self._boosting_periapsis = False
 
     def update(self, bodies: list[Body], time_delta=TIME_SCALE):
         super().update(bodies, time_delta)
         self._battery_update(bodies, time_delta)
         self._altitude_update()
-        self._adjust_orbit()
+        self._adjust_orbit(time_delta=time_delta)
 
 
 class System:

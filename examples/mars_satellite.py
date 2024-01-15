@@ -1,7 +1,10 @@
 import os
+from collections import deque
+
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from src.config import *
 from src.body import Body, System, Satellite
+import matplotlib.pyplot as plt
 
 
 def main():
@@ -36,19 +39,23 @@ def main():
     # https://en.wikipedia.org/wiki/2001_Mars_Odyssey
     sat1 = Satellite(mars.x - mars.radius - 400e3, 0, name="Odyssey", orbit_target=mars,
                      radius=20, color=LIGHT_GRAY, mass=725, initial_velocity=(0, 24.077e3 + orbital_speed(400e3)),
-                     min_altitude=100e3, max_altitude=1000e3)
+                     min_altitude=200e3, max_altitude=2000e3)
 
     # https://en.wikipedia.org/wiki/Mars_Reconnaissance_Orbiter
     sat2 = Satellite(mars.x + mars.radius + 300e3, 0, name="Rec Orbiter", orbit_target=mars,
                      radius=20, color=DARK_GRAY, mass=1125, initial_velocity=(0, 24.077e3 - orbital_speed(300e3)),
-                     min_altitude=100e3, max_altitude=1200e3)
+                     min_altitude=200e3, max_altitude=2000e3)
 
     sat3 = Satellite(mars.x + mars.radius + 5000e3, 0, name="Relay", orbit_target=mars,
                      radius=10, color=WHITE, mass=420, initial_velocity=(0, 24.077e3 - orbital_speed(5000e3)),
-                     min_altitude=3000e3, max_altitude=7000e3)
+                     min_altitude=4500e3, max_altitude=6000e3)
     celestial_bodies = [sun, earth, moon, mars, mercury, venus, jupiter, phobos, deimos]
     satellites = [sat1, sat2, sat3]
     solar_system = System(celestial_bodies, satellites, time_delta=time_delta, focus_scale=focus_scale)
+
+    sat1_altituds = deque(maxlen=15000)
+    sat2_altituds = deque(maxlen=15000)
+    sat3_altituds = deque(maxlen=15000)
 
     while run:
         run = main_step(solar_system, tick=0)
@@ -71,6 +78,23 @@ def main():
         WINDOW.blit(d2, (10, 30))
         WINDOW.blit(d3, (10, 50))
         pygame.display.update()
+
+        sat1_altituds.append(sat1.altitude)
+        sat2_altituds.append(sat2.altitude)
+        sat3_altituds.append(sat3.altitude)
+
+    plt.gcf().set_size_inches(18, 8)
+    plt.plot(sat1_altituds, color="orange")
+    plt.plot(sat2_altituds, color="yellow")
+    plt.plot(sat3_altituds, color="green")
+    # plot min and max altitudes
+    plt.plot([sat1.min_altitude for _ in range(len(sat1_altituds))], color="red")
+    plt.plot([sat1.max_altitude for _ in range(len(sat1_altituds))], color="red")
+    plt.plot([sat3.min_altitude for _ in range(len(sat2_altituds))], color="black")
+    plt.plot([sat3.max_altitude for _ in range(len(sat2_altituds))], color="black")
+    # set minimum y value to 0
+    plt.ylim(bottom=0, top=0.8e7)
+    plt.savefig("sat1_altituds.png")
 
 
 if __name__ == "__main__":
