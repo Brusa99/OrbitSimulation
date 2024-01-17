@@ -1,6 +1,9 @@
 import math
+import random
 import pygame
 from collections import namedtuple
+
+random.seed(170599)
 
 # pygame setup
 pygame.init()
@@ -37,6 +40,14 @@ TIME_SCALE = 3600 * 24  # 1 standard day
 SCALE = 100 / AU  # pixels per meter
 RADIUS_SCALE = 1  # scale radius of planets
 def RADIUS_RESIZE(r): return math.log(r, 2)
+
+
+def get_start_cond(theta, distance, velocity):
+    x = math.cos(theta) * distance
+    y = math.sin(theta) * distance
+    vx = math.cos(theta - math.pi/2) * velocity
+    vy = math.sin(theta - math.pi/2) * velocity
+    return x, y, vx, vy
 
 
 def main_step(system, tick=0) -> bool:
