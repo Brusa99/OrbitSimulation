@@ -179,8 +179,7 @@ class Satellite(Body):
     """
     Body subclass for satellites.
     """
-    interference_factor = 1
-    apsis_counter_threshold = 1000  # number of time steps to wait before resetting the apoapsis and periapsis
+    interference_factor = 1  # factor to increase the radius of the obstacles
     apsis_boost_time = 600  # seconds
 
     # battery factors
@@ -212,8 +211,6 @@ class Satellite(Body):
         self.altitude = 0
         self._boosting_periapsis = False
         self._boosting_apoapsis = False
-        self._periapasis_update_counter = 0
-        self._apoapsis_update_counter = 0
         self._periapsis_booster_steps = 0
         self._apoapsis_booster_steps = 0
         self._periapasis = math.inf
@@ -326,21 +323,11 @@ class Satellite(Body):
             self._at_periapasis = True
         else:
             self._at_periapasis = False
-            self._periapasis_update_counter += 1
         if self.altitude > self._apoapsis:
             self._apoapsis = self.altitude
             self._at_apoapsis = True
         else:
             self._at_apoapsis = False
-            self._apoapsis_update_counter += 1
-
-        # reset periapsis and apoapsis
-        if self._periapasis_update_counter > self.apsis_counter_threshold:
-            self._periapasis = math.inf
-            self._periapasis_update_counter = 0
-        if self._apoapsis_update_counter > self.apsis_counter_threshold:
-            self._apoapsis = 0
-            self._apoapsis_update_counter = 0
 
     def _adjust_orbit(self, time_delta=TIME_SCALE):
         """
@@ -358,10 +345,6 @@ class Satellite(Body):
         # decelerate at periapsis to lower apoapsis
         if self._apoapsis > self.max_altitude and self._at_periapasis and self._apoapsis_booster_steps == 0:
             self._apoapsis_booster_steps += round(self.apsis_boost_time / time_delta)
-            print(f"\n[{self.name}] boosting apoapsis")
-            print(f"boost time = {self.apsis_boost_time}")
-            print(f"time delta = {time_delta}")
-            print(f"steps = {self._apoapsis_booster_steps}")
             self._boosting_apoapsis = True
 
         # burn steps
@@ -380,10 +363,6 @@ class Satellite(Body):
         # accelerate at apoapsis to raise periapsis
         if self._periapasis < self.min_altitude and self._at_apoapsis and self._periapsis_booster_steps == 0:
             self._periapsis_booster_steps += round(self.apsis_boost_time / time_delta)
-            print(f"\n[{self.name}] boosting periapsis")
-            print(f"boost time = {self.apsis_boost_time}")
-            print(f"time delta = {time_delta}")
-            print(f"steps = {self._periapsis_booster_steps}")
             self._boosting_periapsis = True
 
         # burn steps
