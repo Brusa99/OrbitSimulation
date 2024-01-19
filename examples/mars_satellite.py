@@ -68,9 +68,8 @@ def main():
     satellites = [sat1, sat2, sat3]
     solar_system = System(celestial_bodies, satellites, time_delta=time_delta, focus_scale=focus_scale)
 
-    sat1_altituds = deque(maxlen=15000)
-    sat2_altituds = deque(maxlen=15000)
-    sat3_altituds = deque(maxlen=15000)
+    max_len = 15000
+    system_info = deque(maxlen=max_len)
 
     while run:
         run = main_step(solar_system, tick=60)
@@ -94,19 +93,20 @@ def main():
         WINDOW.blit(d3, (10, 50))
         pygame.display.update()
 
-        sat1_altituds.append(sat1.altitude)
-        sat2_altituds.append(sat2.altitude)
-        sat3_altituds.append(sat3.altitude)
+        system_info.append(solar_system.get_sat_info())
 
     plt.gcf().set_size_inches(18, 8)
+    sat1_altituds = [x[0].altitude for x in system_info]
+    sat2_altituds = [x[1].altitude for x in system_info]
+    sat3_altituds = [x[2].altitude for x in system_info]
     plt.plot(sat1_altituds, color="orange")
     plt.plot(sat2_altituds, color="yellow")
     plt.plot(sat3_altituds, color="green")
     # plot min and max altitudes
-    plt.plot([sat1.min_altitude for _ in range(len(sat1_altituds))], color="red")
-    plt.plot([sat1.max_altitude for _ in range(len(sat1_altituds))], color="red")
-    plt.plot([sat3.min_altitude for _ in range(len(sat2_altituds))], color="black")
-    plt.plot([sat3.max_altitude for _ in range(len(sat2_altituds))], color="black")
+    plt.plot([sat1.min_altitude for _ in range(max_len)], color="red")
+    plt.plot([sat1.max_altitude for _ in range(max_len)], color="red")
+    plt.plot([sat3.min_altitude for _ in range(max_len)], color="black")
+    plt.plot([sat3.max_altitude for _ in range(max_len)], color="black")
     # set minimum y value to 0
     plt.ylim(bottom=0, top=0.8e7)
     plt.savefig("sat_altituds.png")

@@ -2,6 +2,7 @@ from __future__ import annotations
 from collections import deque
 import numpy as np
 from src.config import *
+from src.monitoring import SatInfo
 
 
 class Body:
@@ -392,6 +393,14 @@ class Satellite(Body):
         self._altitude_update()
         self._adjust_orbit(time_delta=time_delta)
 
+    @property
+    def boosting(self):
+        return self._boosting_apoapsis or self._boosting_periapsis
+
+    @property
+    def info(self):
+        return SatInfo(self.altitude, self.battery, self.connections, self.attempted_connections, self.boosting)
+
 
 class System:
     """
@@ -488,3 +497,10 @@ class System:
                     sat.relay = relay
                     relay.connections += 1
                     break
+
+    def get_sat_info(self) -> list[SatInfo]:
+        """Gets data from the system's satellites."""
+        sat_infos = []
+        for sat in self.satellites:
+            sat_infos.append(sat.info)
+        return sat_infos
