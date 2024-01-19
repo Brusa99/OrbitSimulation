@@ -180,16 +180,18 @@ class Satellite(Body):
     Body subclass for satellites.
     """
     interference_factor = 1  # factor to increase the radius of the obstacles
-    apsis_boost_time = 600  # seconds
 
     # battery factors
-    solar_charge_factor = 0.02
-    battery_discharge_factor = 0.001
-    transmission_factor = 0.005
-    connection_factor = 0.005
+    _solar_charge_factor = 0.02
+    _battery_discharge_factor = 0.001
+    _transmission_factor = 0.005
+    _connection_factor = 0.005
+    safe_battery_level = 20  # percentage
 
     def __init__(self,
                  *args,
+                 boost_force: float = None,
+                 boost_time: float = 600,
                  motherbase: Body | None = None,
                  sun: Body | None = None,
                  orbit_target: Body | None = None,
@@ -207,7 +209,13 @@ class Satellite(Body):
         self.min_altitude = min_altitude
         self.max_altitude = max_altitude
 
-        self._boost_force = self.mass / 10  # N
+        # thruster parametes
+        if boost_force is None:
+            self.boost_force = self.mass / 10
+        else:
+            self.boost_force = boost_force
+        self.apsis_boost_time = boost_time  # seconds
+
         self.altitude = 0
         self._boosting_periapsis = False
         self._boosting_apoapsis = False
@@ -219,7 +227,7 @@ class Satellite(Body):
         self.connections = 0
         self.attempted_connections = 0
         self.relay = None
-        self.transmitting = False
+        self.transmitting = True
 
     def calculate_path(self, target: Body, obstacles: list[Body]):
         """
@@ -303,10 +311,10 @@ class Satellite(Body):
             TIME_SCALE).
         """
         charging = not self.calculate_path(self.sun, obstacles)
-        battery_prime = self.solar_charge_factor * charging \
-                        - self.transmitting * self.transmission_factor * self.connections \
-                        - self.battery_discharge_factor \
-                        - self.attempted_connections * self.connection_factor
+        battery_prime = self._solar_charge_factor * charging \
+                        - self.transmitting * self._transmission_factor * self.connections \
+                        - self._battery_discharge_factor \
+                        - self.attempted_connections * self._connection_factor
 
         new_battery = np.clip(self.battery + battery_prime * time_delta, 0, 100)
         self.battery = new_battery
@@ -350,7 +358,7 @@ class Satellite(Body):
         # burn steps
         if self._apoapsis_booster_steps > 0:
             velocity_angle = math.atan2(self.vel_y, self.vel_x)
-            acceleration = - self._boost_force / self.mass
+            acceleration = - self.boost_force / self.mass
             self.vel_x += acceleration * math.cos(velocity_angle) * time_delta
             self.vel_y += acceleration * math.sin(velocity_angle) * time_delta
             self._apoapsis_booster_steps -= 1
@@ -368,7 +376,7 @@ class Satellite(Body):
         # burn steps
         if self._periapsis_booster_steps > 0:
             velocity_angle = math.atan2(self.vel_y, self.vel_x)
-            acceleration = - self._boost_force / self.mass
+            acceleration = - self.boost_force / self.mass
             self.vel_x += acceleration * math.cos(velocity_angle) * time_delta
             self.vel_y += acceleration * math.sin(velocity_angle) * time_delta
             self._periapsis_booster_steps -= 1
@@ -475,7 +483,7 @@ class System:
             for relay in connected_sats:
                 sat.attempted_connections += 1
                 obstructed = sat.calculate_path(relay, self.celestial_bodies)
-                if not obstructed:
+                if not obstructed and relay.battery > relay.safe_battery_level:
                     sat.connections += 1
                     sat.relay = relay
                     relay.connections += 1
