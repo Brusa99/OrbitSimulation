@@ -77,7 +77,6 @@ def main():
         WINDOW.fill(BLACK)
         WINDOW.blit(bg, (0, 0))
 
-        solar_system.satellite_connection()
         solar_system.draw_focused(WINDOW, focus=mars)
 
         text1 = f"[{sat1.name}] battery = {round(sat1.battery, 1)}%, altitude = {round(sat1.altitude/1000, 1)}km"

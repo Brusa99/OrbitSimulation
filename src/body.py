@@ -311,6 +311,12 @@ class Satellite(Body):
             time delta to approximate the derivative of the position and the velocity of the bodies (default is
             TIME_SCALE).
         """
+        # If the satellite has no battery, don't transmit
+        if self.battery <= 0:
+            self.transmitting = False
+        else:
+            self.transmitting = True
+
         charging = not self.calculate_path(self.sun, obstacles)
         battery_prime = self._solar_charge_factor * charging \
                         - self.transmitting * self._transmission_factor * self.connections \
@@ -463,6 +469,7 @@ class System:
         """Updates the positions and the velocities of all the bodies in the system."""
         for body in self.celestial_bodies:
             body.update(self.celestial_bodies, self.time_delta)
+        self._satellite_connection()
         for satellite in self.satellites:
             satellite.update(self.celestial_bodies, self.time_delta)
 
@@ -474,7 +481,7 @@ class System:
             sat.draw_focused(window, focus, self.focus_scale)
             sat.draw_connection_focused(window, sat.relay, self.celestial_bodies, focus, self.focus_scale)
 
-    def satellite_connection(self):
+    def _satellite_connection(self):
         """Check if the satellites can connect to motherbase directly or through a relay."""
         # try to connect to motherbase
         for sat in self.satellites:
@@ -489,6 +496,10 @@ class System:
         connected_sats = [sat for sat in self.satellites if sat.connections]
         unconnected_sats = [sat for sat in self.satellites if sat not in connected_sats]
         for sat in unconnected_sats:
+            # if battery is below safety level, don't try to connect
+            if sat.battery < sat.safe_battery_level:
+                continue
+
             for relay in connected_sats:
                 sat.attempted_connections += 1
                 obstructed = sat.calculate_path(relay, self.celestial_bodies)
