@@ -2,6 +2,8 @@ import math
 import os
 from collections import deque
 
+import numpy as np
+
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 from src.config import *
 from src.body import Body, System, Satellite
@@ -41,7 +43,7 @@ def main():
     x, y, vx, vy = get_start_cond(theta, 1.524 * AU, 24.077e3)
     mars = Body(x, y, radius=3.389e6, color=RED, mass=6.39e23, initial_velocity=(vx, vy), name="Mars")
     # natural moons
-    x, y, vx, vy = get_start_cond(theta, 1.524 * AU + mars.radius + 9e6, 24.077e3 + 2.138e3)
+    x, y, vx, vy = get_start_cond(theta, 1.524 * AU + mars.radius + 9.4e6, 24.077e3 + 2.138e3)
     phobos = Body(x, y, radius=11e3, color=PINK, mass=1.0659e16, initial_velocity=(vx, vy), name="Phobos")
     x, y, vx, vy = get_start_cond(theta, 1.524 * AU + mars.radius + 23e6, 24.077e3 + 1.3513e3)
     deimos = Body(x, y, radius=6e3, color=DARK_RED, mass=1.4762e15, initial_velocity=(vx, vy), name="Deimos")
@@ -68,11 +70,11 @@ def main():
     satellites = [sat1, sat2, sat3]
     solar_system = System(celestial_bodies, satellites, time_delta=time_delta, focus_scale=focus_scale)
 
-    max_len = 15000
+    max_len = 15_000
     system_info = deque(maxlen=max_len)
 
     while run:
-        run = main_step(solar_system, tick=60)
+        run = main_step(solar_system, tick=00)
 
         WINDOW.fill(BLACK)
         WINDOW.blit(bg, (0, 0))
@@ -109,6 +111,10 @@ def main():
     # set minimum y value to 0
     plt.ylim(bottom=0, top=0.8e7)
     plt.savefig("sat_altituds.png")
+
+    # save data to array
+    system_info = np.array(system_info)
+    np.save("sat_info.npy", system_info)
 
 
 if __name__ == "__main__":
