@@ -34,12 +34,14 @@ formula AsymptoticStabilityHigh = eventually ( globally ((altitude > 4600000) & 
 formula Connection = ! globally[0, 30] (connections < 1);
 """
 
-_moonlightScript = ScriptLoader.loadFromText(_parametrized_script)
+_moonlightScript = ScriptLoader.loadFromText(_script)
 
 pos_bat_monitor = _moonlightScript.getMonitor("PositiveBattery")
 safe_bat_monitor = _moonlightScript.getMonitor("SafeBatteryUsage")
-safe_lowalt_monitor = _moonlightScript.getMonitor("SafeAltitudeLow")
-safe_highalt_monitor = _moonlightScript.getMonitor("SafeAltitudeHigh")
-lowasym_stab_monitor = _moonlightScript.getMonitor("AsymptoticStabilityLow")
-highasym_stab_monitor = _moonlightScript.getMonitor("AsymptoticStabilityHigh")
+# safe_lowalt_monitor = _moonlightScript.getMonitor("SafeAltitudeLow")
+# safe_highalt_monitor = _moonlightScript.getMonitor("SafeAltitudeHigh")
+safe_alt_monitor = _moonlightScript.getMonitor("SafeAltitude")
+# lowasym_stab_monitor = _moonlightScript.getMonitor("AsymptoticStabilityLow")
+# highasym_stab_monitor = _moonlightScript.getMonitor("AsymptoticStabilityHigh")
+asym_stab_monitor = _moonlightScript.getMonitor("AsymptoticStability")
 connection_monitor = _moonlightScript.getMonitor("Connection")
